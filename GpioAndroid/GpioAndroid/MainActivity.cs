@@ -12,66 +12,63 @@ using System.Threading.Tasks;
 namespace GpioAndroid
 {
     [Activity(Label = "GpioAndroid", MainLauncher = true, Icon = "@drawable/icon")]
-    public class MainActivity : Activity
+public class MainActivity : Activity
+{
+    TextView text1;
+    Gpio mLedGpio;
+
+
+    protected override void OnCreate(Bundle bundle)
     {
-        TextView text1;
-        Gpio mLedGpio;
+        base.OnCreate(bundle);
 
+        // Set our view from the "main" layout resource
+        SetContentView(Resource.Layout.Main);
 
-        protected override void OnCreate(Bundle bundle)
+        // Get our button from the layout resource,
+        // and attach an event to it
+        Button button = FindViewById<Button>(Resource.Id.MyButton);
+        button.Click += Button_Click;
+        text1 = FindViewById<TextView>(Resource.Id.textView1);
+
+        PeripheralManagerService service = new PeripheralManagerService();
+        try
         {
-            base.OnCreate(bundle);
+            var pinName = "BCM4";   // RPi3 
+            // String pinName = BoardDefaults.getGPIOForLED();
+            mLedGpio = service.OpenGpio(pinName);
+            mLedGpio.SetDirection(Gpio.DirectionOutInitiallyLow);
+        }
+        catch 
+        {     
+        }
 
-            // Set our view from the "main" layout resource
-            SetContentView(Resource.Layout.Main);
-
-            // Get our button from the layout resource,
-            // and attach an event to it
-            Button button = FindViewById<Button>(Resource.Id.MyButton);
-            button.Click += Button_Click;
-            text1 = FindViewById<TextView>(Resource.Id.textView1);
-
-
-            // return;
-
-            PeripheralManagerService service = new PeripheralManagerService();
-            try
+        var task = new Task(async() => {
+            while (true)
             {
-                var pinName = "BCM4";   // RPi3 
-                // String pinName = BoardDefaults.getGPIOForLED();
-                mLedGpio = service.OpenGpio(pinName);
-                mLedGpio.SetDirection(Gpio.DirectionOutInitiallyLow);
+                await Task.Delay(1000);
+                mLedGpio.Value = !mLedGpio.Value;
+                System.Diagnostics.Debug.WriteLine("led: {0}", mLedGpio.Value);
+
+                RunOnUiThread(() => {
+                    if (mLedGpio.Value)
+                    {
+                        text1.SetBackgroundColor(Android.Graphics.Color.LightPink);
+                    }
+                    else
+                    {
+                        text1.SetBackgroundColor(Android.Graphics.Color.White);
+                    }
+                });
             }
-            catch 
-            {     
-            }
-
-            var task = new Task(async() => {
-                while (true)
-                {
-                    await Task.Delay(1000);
-                    mLedGpio.Value = !mLedGpio.Value;
-                    System.Diagnostics.Debug.WriteLine("led: {0}", mLedGpio.Value);
-
-                    RunOnUiThread(() => {
-                        if (mLedGpio.Value)
-                        {
-                            text1.SetBackgroundColor(Android.Graphics.Color.LightPink);
-                        }
-                        else
-                        {
-                            text1.SetBackgroundColor(Android.Graphics.Color.White);
-                        }
-                    });
-                }
-            });
-            task.Start();
-        }
-
-        private void Button_Click(object sender, EventArgs e)
-        {
-            mLedGpio.Value = !mLedGpio.Value;
-        }
+        });
+        task.Start();
     }
+
+    private void Button_Click(object sender, EventArgs e)
+    {
+        mLedGpio.Value = !mLedGpio.Value;
+    }
+}
 }
 
